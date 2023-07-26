@@ -6,8 +6,9 @@ import (
 )
 
 func AdminRoute(router *gin.Engine) {
-	admin := router.Group("/admin")
+	admin := router.Group("/api/admin")
 	{
-		admin.GET("/createproduct", controllers.CreateProduct)
+		admin.POST("/createproduct", controllers.AdminCreateProduct)
+		admin.GET("/ping", controllers.Ping)
 	}
 }
