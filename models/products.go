@@ -20,6 +20,7 @@ type Products struct {
 	DiscountType       *string `json:"discountType"`
 	DiscountPrice      *int    `json:"discountPrice"`
 	Description        string  `json:"description"`
+	Stock              int     `json:"stock" gorm:"not null"`
 	DealerName         string  `json:"dealerName"`
 	DealerPlace        string  `json:"dealerPlace"`
 	ProductDestination string  `json:"productDestination"`
