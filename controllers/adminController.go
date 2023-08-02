@@ -3,11 +3,13 @@ package controllers
 import (
 	"fmt"
 	"net/http"
+	"path/filepath"
+	"strconv"
 
 	"github.com/aswinjithkukku/ecom-gingorm/initializer"
 	"github.com/aswinjithkukku/ecom-gingorm/models"
 	"github.com/gin-gonic/gin"
-	"github.com/go-playground/validator/v10"
+	"github.com/google/uuid"
 )
 
 type ProductStruct struct {
@@ -15,34 +17,88 @@ type ProductStruct struct {
 	LongName           string  `json:"longName"`
 	Cost               int     `json:"cost"`
 	Price              int     `json:"price"`
+	FinalPrice         int     `json:"finalPrice"`
+	IsDiscount         bool    `json:"isDiscount"`
 	DiscountType       *string `json:"discountType"`
 	DiscountPrice      *int    `json:"discountPrice"`
 	Description        string  `json:"description"`
 	Stock              int     `json:"stock"`
 	DealerName         string  `json:"dealerName"`
 	DealerPlace        string  `json:"dealerPlace"`
+	HeroImage          string  `json:"heroImage"`
 	ProductDestination string  `json:"productDestination"`
 }
 
 func AdminCreateProduct(c *gin.Context) {
 
-	var product models.Products
+	shortName := c.PostForm("shortName")
+	longName := c.PostForm("longName")
+	costString := c.PostForm("cost")
+	cost, _ := strconv.Atoi(costString)
 
-	if err := c.ShouldBind(&product); err != nil {
+	priceString := c.PostForm("price")
+	price, _ := strconv.Atoi(priceString)
+
+	isDiscountString := c.PostForm("isDiscount")
+	isDiscount := false
+	if isDiscountString != "" {
+		isDiscountParsed, _ := strconv.ParseBool(isDiscountString)
+		isDiscount = isDiscountParsed
+	}
+
+	discountType := c.PostForm("discountType")
+	discountPriceString := c.PostForm("discountPrice")
+	discountPrice, _ := strconv.Atoi(discountPriceString)
+
+	description := c.PostForm("description")
+	stockString := c.PostForm("stock")
+	stock, _ := strconv.Atoi(stockString)
+
+	dealerName := c.PostForm("dealerName")
+	dealerPlace := c.PostForm("dealerPlace")
+	productDestination := c.PostForm("productDestination")
+
+	var finalPrice int = price
+
+	if isDiscount {
+		if discountType == models.Percentage {
+			finalPrice = price - ((discountPrice * price) / 100)
+		} else if discountType == models.Flat {
+			finalPrice = price - discountPrice
+		}
+	} else {
+		discountType = ""
+		discountPrice = 0
+	}
+
+	if finalPrice < cost {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error": err.Error(),
+			"error": "The discount price cannot exceed cost",
 		})
 		c.Abort()
 		return
 	}
+	// heroImage adding.
+	heroImagePath, _ := c.FormFile("heroImage")
+	extension := filepath.Ext(heroImagePath.Filename)
+	heroImage := uuid.New().String() + extension
+	c.SaveUploadedFile(heroImagePath, "./public/images"+heroImage)
 
-	validate := validator.New()
-	if err := validate.Struct(product); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": err.Error(),
-		})
-		c.Abort()
-		return
+	product := models.Products{
+		ShortName:          shortName,
+		LongName:           longName,
+		Cost:               uint(cost),
+		Price:              uint(price),
+		FinalPrice:         uint(finalPrice),
+		IsDiscount:         isDiscount,
+		DiscountType:       &discountType,
+		DiscountPrice:      &discountPrice,
+		Description:        description,
+		Stock:              uint(stock),
+		DealerName:         dealerName,
+		DealerPlace:        dealerPlace,
+		ProductDestination: productDestination,
+		HeroImage:          "/public/images" + heroImage,
 	}
 
 	result := initializer.DB.Create(&product)
@@ -85,9 +141,14 @@ func AdminUpdateProduct(c *gin.Context) {
 	}
 
 	var product models.Products
-
-	result := initializer.DB.First(&product).Where("id = ?", productId)
-
+	result := initializer.DB.Find(&product, "id = ?", productId)
+	if result.RowsAffected == 0 {
+		c.JSON(http.StatusForbidden, gin.H{
+			"error": "No data found",
+		})
+		c.Abort()
+		return
+	}
 	if result.Error != nil {
 		c.JSON(http.StatusNotFound, gin.H{
 			"error": result.Error,
@@ -98,12 +159,12 @@ func AdminUpdateProduct(c *gin.Context) {
 
 	product.ShortName = body.ShortName
 	product.LongName = body.LongName
-	product.Cost = body.Cost
-	product.Price = body.Price
+	product.Cost = uint(body.Cost)
+	product.Price = uint(body.Price)
 	product.DiscountType = body.DiscountType
 	product.DiscountPrice = body.DiscountPrice
 	product.Description = body.Description
-	product.Stock = body.Stock
+	product.Stock = uint(body.Stock)
 	product.DealerName = body.DealerName
 	product.DealerPlace = body.DealerPlace
 	product.ProductDestination = body.ProductDestination
@@ -129,11 +190,18 @@ func AdminDeleteProduct(c *gin.Context) {
 	}
 
 	var product models.Products
-	result := initializer.DB.First(&product).Where("id = ?", productId)
+	result := initializer.DB.First(&product, "id = ?", productId)
 
 	if result.Error != nil {
 		c.JSON(http.StatusNotFound, gin.H{
 			"error": result.Error,
+		})
+		c.Abort()
+		return
+	}
+	if result.RowsAffected == 0 {
+		c.JSON(http.StatusForbidden, gin.H{
+			"error": "No data found",
 		})
 		c.Abort()
 		return
@@ -165,6 +233,13 @@ func AdminGetAllProducts(c *gin.Context) {
 		c.Abort()
 		return
 	}
+	if result.RowsAffected == 0 {
+		c.JSON(http.StatusForbidden, gin.H{
+			"error": "No data found",
+		})
+		c.Abort()
+		return
+	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"sucess":   true,
@@ -185,11 +260,18 @@ func AdminGetSingleProduct(c *gin.Context) {
 
 	var product models.Products
 
-	result := initializer.DB.First(&product).Where("id = ?", productId)
+	result := initializer.DB.Find(&product, "id = ?", productId)
 
 	if result.Error != nil {
 		c.JSON(http.StatusForbidden, gin.H{
 			"error": result.Error,
+		})
+		c.Abort()
+		return
+	}
+	if result.RowsAffected == 0 {
+		c.JSON(http.StatusForbidden, gin.H{
+			"error": "No data found",
 		})
 		c.Abort()
 		return
@@ -199,8 +281,4 @@ func AdminGetSingleProduct(c *gin.Context) {
 		"success": true,
 		"product": product,
 	})
-}
-
-func Ping(c *gin.Context) {
-	c.JSON(200, "pong")
 }
