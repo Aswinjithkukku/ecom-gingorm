@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"path/filepath"
 	"strconv"
+	"time"
 
 	"github.com/aswinjithkukku/ecom-gingorm/initializer"
 	"github.com/aswinjithkukku/ecom-gingorm/models"
@@ -28,6 +29,7 @@ type ProductStruct struct {
 	ProductDestination string `json:"productDestination"`
 }
 
+// Admin to create a product.
 func AdminCreateProduct(c *gin.Context) {
 
 	body := ProductStruct{
@@ -75,10 +77,25 @@ func AdminCreateProduct(c *gin.Context) {
 		return
 	}
 	// HeroImage adding.
-	heroImagePath, _ := c.FormFile("heroImage")
+	heroImagePath, err := c.FormFile("heroImage")
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Invalid image provided",
+		})
+		c.Abort()
+		return
+	}
+
 	extension := filepath.Ext(heroImagePath.Filename)
 	heroImage := uuid.New().String() + extension
-	c.SaveUploadedFile(heroImagePath, "./public/images"+heroImage)
+
+	// Taking date for the folder.
+	layout := "2006-01-02"
+	dateTime := time.Now().Format("2006-01-02")
+	dateValue, _ := time.Parse(layout, dateTime)
+	folderName := dateValue.Format("2006-01-02")
+
+	c.SaveUploadedFile(heroImagePath, "./public/"+folderName+"/"+heroImage)
 
 	product := models.Products{
 		ShortName:          body.ShortName,
@@ -94,7 +111,7 @@ func AdminCreateProduct(c *gin.Context) {
 		DealerName:         body.DealerName,
 		DealerPlace:        body.DealerPlace,
 		ProductDestination: body.ProductDestination,
-		HeroImage:          "/public/images" + heroImage,
+		HeroImage:          "/public/" + folderName + "/" + heroImage,
 	}
 
 	if isDiscount {
@@ -120,6 +137,7 @@ func AdminCreateProduct(c *gin.Context) {
 
 }
 
+// Admin to update product.
 func AdminUpdateProduct(c *gin.Context) {
 	productId := c.Param("productid")
 
@@ -131,18 +149,25 @@ func AdminUpdateProduct(c *gin.Context) {
 		return
 	}
 
-	var body ProductStruct
-
-	if err := c.ShouldBindJSON(&body); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": err.Error(),
-		})
-		c.Abort()
-		return
+	body := ProductStruct{
+		ShortName:          c.PostForm("shortName"),
+		LongName:           c.PostForm("longName"),
+		Cost:               c.PostForm("cost"),
+		Price:              c.PostForm("price"),
+		IsDiscount:         c.PostForm("isDiscount"),
+		DiscountType:       c.PostForm("discountType"),
+		DiscountPrice:      c.PostForm("discountPrice"),
+		Description:        c.PostForm("description"),
+		Stock:              c.PostForm("stock"),
+		DealerName:         c.PostForm("dealerName"),
+		DealerPlace:        c.PostForm("dealerPlace"),
+		ProductDestination: c.PostForm("productDestination"),
 	}
 
 	var product models.Products
+
 	result := initializer.DB.Find(&product, "id = ?", productId)
+
 	if result.RowsAffected == 0 {
 		c.JSON(http.StatusForbidden, gin.H{
 			"error": "No data found",
@@ -150,12 +175,39 @@ func AdminUpdateProduct(c *gin.Context) {
 		c.Abort()
 		return
 	}
+
 	if result.Error != nil {
 		c.JSON(http.StatusNotFound, gin.H{
 			"error": result.Error,
 		})
 		c.Abort()
 		return
+	}
+	// HeroImage adding.
+	heroImagePath, err := c.FormFile("heroImage")
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Invalid image provided",
+		})
+		c.Abort()
+		return
+	}
+
+	extension := filepath.Ext(heroImagePath.Filename)
+	heroImage := uuid.New().String() + extension
+
+	// Taking date for the folder.
+	layout := "2006-01-02"
+	dateTime := time.Now().Format("2006-01-02")
+	dateValue, _ := time.Parse(layout, dateTime)
+	folderName := dateValue.Format("2006-01-02")
+
+	c.SaveUploadedFile(heroImagePath, "./public/"+folderName+"/"+heroImage)
+
+	isDiscount := false
+	if body.IsDiscount != "" {
+		isDiscountParsed, _ := strconv.ParseBool(body.IsDiscount)
+		isDiscount = isDiscountParsed
 	}
 
 	cost, _ := strconv.Atoi(body.Cost)
@@ -167,6 +219,7 @@ func AdminUpdateProduct(c *gin.Context) {
 	product.LongName = body.LongName
 	product.Cost = uint(cost)
 	product.Price = uint(price)
+	product.IsDiscount = isDiscount
 	product.DiscountType = &body.DiscountType
 	product.DiscountPrice = &discountPrice
 	product.Description = body.Description
@@ -174,6 +227,7 @@ func AdminUpdateProduct(c *gin.Context) {
 	product.DealerName = body.DealerName
 	product.DealerPlace = body.DealerPlace
 	product.ProductDestination = body.ProductDestination
+	product.HeroImage = "/public/" + folderName + "/" + heroImage
 
 	initializer.DB.Save(&product)
 
