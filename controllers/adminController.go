@@ -13,62 +13,58 @@ import (
 )
 
 type ProductStruct struct {
-	ShortName          string  `json:"shortName"`
-	LongName           string  `json:"longName"`
-	Cost               int     `json:"cost"`
-	Price              int     `json:"price"`
-	FinalPrice         int     `json:"finalPrice"`
-	IsDiscount         bool    `json:"isDiscount"`
-	DiscountType       *string `json:"discountType"`
-	DiscountPrice      *int    `json:"discountPrice"`
-	Description        string  `json:"description"`
-	Stock              int     `json:"stock"`
-	DealerName         string  `json:"dealerName"`
-	DealerPlace        string  `json:"dealerPlace"`
-	HeroImage          string  `json:"heroImage"`
-	ProductDestination string  `json:"productDestination"`
+	ShortName          string `json:"shortName"`
+	LongName           string `json:"longName"`
+	Cost               string `json:"cost"`
+	Price              string `json:"price"`
+	FinalPrice         string `json:"finalPrice"`
+	IsDiscount         string `json:"isDiscount"`
+	DiscountType       string `json:"discountType"`
+	DiscountPrice      string `json:"discountPrice"`
+	Description        string `json:"description"`
+	Stock              string `json:"stock"`
+	DealerName         string `json:"dealerName"`
+	DealerPlace        string `json:"dealerPlace"`
+	ProductDestination string `json:"productDestination"`
 }
 
 func AdminCreateProduct(c *gin.Context) {
 
-	shortName := c.PostForm("shortName")
-	longName := c.PostForm("longName")
-	costString := c.PostForm("cost")
-	cost, _ := strconv.Atoi(costString)
+	body := ProductStruct{
+		ShortName:          c.PostForm("shortName"),
+		LongName:           c.PostForm("longName"),
+		Cost:               c.PostForm("cost"),
+		Price:              c.PostForm("price"),
+		IsDiscount:         c.PostForm("isDiscount"),
+		DiscountType:       c.PostForm("discountType"),
+		DiscountPrice:      c.PostForm("discountPrice"),
+		Description:        c.PostForm("description"),
+		Stock:              c.PostForm("stock"),
+		DealerName:         c.PostForm("dealerName"),
+		DealerPlace:        c.PostForm("dealerPlace"),
+		ProductDestination: c.PostForm("productDestination"),
+	}
 
-	priceString := c.PostForm("price")
-	price, _ := strconv.Atoi(priceString)
+	// Parsing value.
+	cost, _ := strconv.Atoi(body.Cost)
+	price, _ := strconv.Atoi(body.Price)
+	discountPrice, _ := strconv.Atoi(body.DiscountPrice)
+	stock, _ := strconv.Atoi(body.Stock)
 
-	isDiscountString := c.PostForm("isDiscount")
 	isDiscount := false
-	if isDiscountString != "" {
-		isDiscountParsed, _ := strconv.ParseBool(isDiscountString)
+	if body.IsDiscount != "" {
+		isDiscountParsed, _ := strconv.ParseBool(body.IsDiscount)
 		isDiscount = isDiscountParsed
 	}
 
-	discountType := c.PostForm("discountType")
-	discountPriceString := c.PostForm("discountPrice")
-	discountPrice, _ := strconv.Atoi(discountPriceString)
-
-	description := c.PostForm("description")
-	stockString := c.PostForm("stock")
-	stock, _ := strconv.Atoi(stockString)
-
-	dealerName := c.PostForm("dealerName")
-	dealerPlace := c.PostForm("dealerPlace")
-	productDestination := c.PostForm("productDestination")
-
 	var finalPrice int = price
-
+	// Adding Discount Value
 	if isDiscount {
-		if discountType == models.Percentage {
+		if body.DiscountType == models.Percentage {
 			finalPrice = price - ((discountPrice * price) / 100)
-		} else if discountType == models.Flat {
+		} else if body.DiscountType == models.Flat {
 			finalPrice = price - discountPrice
 		}
-	} else {
-		discountType = ""
-		discountPrice = 0
 	}
 
 	if finalPrice < cost {
@@ -78,27 +74,32 @@ func AdminCreateProduct(c *gin.Context) {
 		c.Abort()
 		return
 	}
-	// heroImage adding.
+	// HeroImage adding.
 	heroImagePath, _ := c.FormFile("heroImage")
 	extension := filepath.Ext(heroImagePath.Filename)
 	heroImage := uuid.New().String() + extension
 	c.SaveUploadedFile(heroImagePath, "./public/images"+heroImage)
 
 	product := models.Products{
-		ShortName:          shortName,
-		LongName:           longName,
+		ShortName:          body.ShortName,
+		LongName:           body.LongName,
 		Cost:               uint(cost),
 		Price:              uint(price),
 		FinalPrice:         uint(finalPrice),
 		IsDiscount:         isDiscount,
-		DiscountType:       &discountType,
-		DiscountPrice:      &discountPrice,
-		Description:        description,
+		DiscountType:       nil,
+		DiscountPrice:      nil,
+		Description:        body.Description,
 		Stock:              uint(stock),
-		DealerName:         dealerName,
-		DealerPlace:        dealerPlace,
-		ProductDestination: productDestination,
+		DealerName:         body.DealerName,
+		DealerPlace:        body.DealerPlace,
+		ProductDestination: body.ProductDestination,
 		HeroImage:          "/public/images" + heroImage,
+	}
+
+	if isDiscount {
+		product.DiscountType = &body.DiscountType
+		product.DiscountPrice = &discountPrice
 	}
 
 	result := initializer.DB.Create(&product)
@@ -157,14 +158,19 @@ func AdminUpdateProduct(c *gin.Context) {
 		return
 	}
 
+	cost, _ := strconv.Atoi(body.Cost)
+	price, _ := strconv.Atoi(body.Price)
+	discountPrice, _ := strconv.Atoi(body.DiscountPrice)
+	stock, _ := strconv.Atoi(body.Stock)
+
 	product.ShortName = body.ShortName
 	product.LongName = body.LongName
-	product.Cost = uint(body.Cost)
-	product.Price = uint(body.Price)
-	product.DiscountType = body.DiscountType
-	product.DiscountPrice = body.DiscountPrice
+	product.Cost = uint(cost)
+	product.Price = uint(price)
+	product.DiscountType = &body.DiscountType
+	product.DiscountPrice = &discountPrice
 	product.Description = body.Description
-	product.Stock = uint(body.Stock)
+	product.Stock = uint(stock)
 	product.DealerName = body.DealerName
 	product.DealerPlace = body.DealerPlace
 	product.ProductDestination = body.ProductDestination
