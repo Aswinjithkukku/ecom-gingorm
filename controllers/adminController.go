@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"path/filepath"
@@ -10,20 +11,22 @@ import (
 	"github.com/aswinjithkukku/ecom-gingorm/initializer"
 	"github.com/aswinjithkukku/ecom-gingorm/models"
 	"github.com/gin-gonic/gin"
+	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
+	"gorm.io/gorm"
 )
 
 type ProductStruct struct {
-	ShortName          string `json:"shortName"`
-	LongName           string `json:"longName"`
-	Cost               string `json:"cost"`
-	Price              string `json:"price"`
-	FinalPrice         string `json:"finalPrice"`
-	IsDiscount         string `json:"isDiscount"`
-	DiscountType       string `json:"discountType"`
-	DiscountPrice      string `json:"discountPrice"`
-	Description        string `json:"description"`
-	Stock              string `json:"stock"`
+	ShortName          string `json:"shortName" validate:"required,min=3"`
+	LongName           string `json:"longName"  validate:"required,min=3"`
+	Cost               int    `json:"cost" validate:"required"`
+	Price              int    `json:"price"  validate:"required"`
+	FinalPrice         int    `json:"finalPrice"`
+	IsDiscount         bool   `json:"isDiscount"`
+	DiscountType       string `json:"discountType" `
+	DiscountPrice      int    `json:"discountPrice"`
+	Description        string `json:"description" validate:"required"`
+	Stock              int    `json:"stock" validate:"required"`
 	DealerName         string `json:"dealerName"`
 	DealerPlace        string `json:"dealerPlace"`
 	ProductDestination string `json:"productDestination"`
@@ -32,36 +35,69 @@ type ProductStruct struct {
 // Admin to create a product.
 func AdminCreateProduct(c *gin.Context) {
 
+	// Parsing value.
+	cost, err := strconv.Atoi(c.PostForm("cost"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Cost should be number type",
+		})
+	}
+	price, err := strconv.Atoi(c.PostForm("price"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Price should be number type",
+		})
+	}
+	isDiscountParsed, _ := strconv.ParseBool(c.PostForm("isDiscount"))
+
+	discountPrice, err := strconv.Atoi(c.PostForm("discountPrice"))
+	if err != nil && isDiscountParsed {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Discount should be number type",
+		})
+	}
+
+	stock, err := strconv.Atoi(c.PostForm("stock"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Stock should be number type",
+		})
+	}
+
 	body := ProductStruct{
 		ShortName:          c.PostForm("shortName"),
 		LongName:           c.PostForm("longName"),
-		Cost:               c.PostForm("cost"),
-		Price:              c.PostForm("price"),
-		IsDiscount:         c.PostForm("isDiscount"),
+		Cost:               cost,
+		Price:              price,
+		IsDiscount:         isDiscountParsed,
 		DiscountType:       c.PostForm("discountType"),
-		DiscountPrice:      c.PostForm("discountPrice"),
+		DiscountPrice:      discountPrice,
 		Description:        c.PostForm("description"),
-		Stock:              c.PostForm("stock"),
+		Stock:              stock,
 		DealerName:         c.PostForm("dealerName"),
 		DealerPlace:        c.PostForm("dealerPlace"),
 		ProductDestination: c.PostForm("productDestination"),
 	}
 
-	// Parsing value.
-	cost, _ := strconv.Atoi(body.Cost)
-	price, _ := strconv.Atoi(body.Price)
-	discountPrice, _ := strconv.Atoi(body.DiscountPrice)
-	stock, _ := strconv.Atoi(body.Stock)
-
-	isDiscount := false
-	if body.IsDiscount != "" {
-		isDiscountParsed, _ := strconv.ParseBool(body.IsDiscount)
-		isDiscount = isDiscountParsed
+	validate := validator.New()
+	if err := validate.Struct(body); err != nil {
+		validationErrors := err.(validator.ValidationErrors)
+		var errArray []string
+		for _, e := range validationErrors {
+			field := e.Field()
+			tag := e.Tag()
+			errArray = append(errArray, field+" "+tag)
+		}
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": errArray[0],
+		})
+		c.Abort()
+		return
 	}
 
 	var finalPrice int = price
 	// Adding Discount Value
-	if isDiscount {
+	if body.IsDiscount {
 		if body.DiscountType == models.Percentage {
 			finalPrice = price - ((discountPrice * price) / 100)
 		} else if body.DiscountType == models.Flat {
@@ -103,7 +139,7 @@ func AdminCreateProduct(c *gin.Context) {
 		Cost:               uint(cost),
 		Price:              uint(price),
 		FinalPrice:         uint(finalPrice),
-		IsDiscount:         isDiscount,
+		IsDiscount:         body.IsDiscount,
 		DiscountType:       nil,
 		DiscountPrice:      nil,
 		Description:        body.Description,
@@ -114,7 +150,7 @@ func AdminCreateProduct(c *gin.Context) {
 		HeroImage:          "/public/" + folderName + "/" + heroImage,
 	}
 
-	if isDiscount {
+	if body.IsDiscount {
 		product.DiscountType = &body.DiscountType
 		product.DiscountPrice = &discountPrice
 	}
@@ -149,16 +185,44 @@ func AdminUpdateProduct(c *gin.Context) {
 		return
 	}
 
+	cost, err := strconv.Atoi(c.PostForm("cost"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Cost should be number type",
+		})
+	}
+	price, err := strconv.Atoi(c.PostForm("price"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Price should be number type",
+		})
+	}
+	isDiscountParsed, _ := strconv.ParseBool(c.PostForm("isDiscount"))
+
+	discountPrice, err := strconv.Atoi(c.PostForm("discountPrice"))
+	if err != nil && isDiscountParsed {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Discount should be number type",
+		})
+	}
+
+	stock, err := strconv.Atoi(c.PostForm("stock"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Stock should be number type",
+		})
+	}
+
 	body := ProductStruct{
 		ShortName:          c.PostForm("shortName"),
 		LongName:           c.PostForm("longName"),
-		Cost:               c.PostForm("cost"),
-		Price:              c.PostForm("price"),
-		IsDiscount:         c.PostForm("isDiscount"),
+		Cost:               cost,
+		Price:              price,
+		IsDiscount:         isDiscountParsed,
 		DiscountType:       c.PostForm("discountType"),
-		DiscountPrice:      c.PostForm("discountPrice"),
+		DiscountPrice:      discountPrice,
 		Description:        c.PostForm("description"),
-		Stock:              c.PostForm("stock"),
+		Stock:              stock,
 		DealerName:         c.PostForm("dealerName"),
 		DealerPlace:        c.PostForm("dealerPlace"),
 		ProductDestination: c.PostForm("productDestination"),
@@ -197,29 +261,17 @@ func AdminUpdateProduct(c *gin.Context) {
 	heroImage := uuid.New().String() + extension
 
 	// Taking date for the folder.
-	layout := "2006-01-02"
 	dateTime := time.Now().Format("2006-01-02")
-	dateValue, _ := time.Parse(layout, dateTime)
+	dateValue, _ := time.Parse("2006-01-02", dateTime)
 	folderName := dateValue.Format("2006-01-02")
 
 	c.SaveUploadedFile(heroImagePath, "./public/"+folderName+"/"+heroImage)
-
-	isDiscount := false
-	if body.IsDiscount != "" {
-		isDiscountParsed, _ := strconv.ParseBool(body.IsDiscount)
-		isDiscount = isDiscountParsed
-	}
-
-	cost, _ := strconv.Atoi(body.Cost)
-	price, _ := strconv.Atoi(body.Price)
-	discountPrice, _ := strconv.Atoi(body.DiscountPrice)
-	stock, _ := strconv.Atoi(body.Stock)
 
 	product.ShortName = body.ShortName
 	product.LongName = body.LongName
 	product.Cost = uint(cost)
 	product.Price = uint(price)
-	product.IsDiscount = isDiscount
+	product.IsDiscount = body.IsDiscount
 	product.DiscountType = &body.DiscountType
 	product.DiscountPrice = &discountPrice
 	product.Description = body.Description
@@ -252,16 +304,25 @@ func AdminDeleteProduct(c *gin.Context) {
 	var product models.Products
 	result := initializer.DB.First(&product, "id = ?", productId)
 
-	if result.Error != nil {
+	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 		c.JSON(http.StatusNotFound, gin.H{
-			"error": result.Error,
+			"error": "Sorry no data found!",
 		})
 		c.Abort()
 		return
 	}
+
 	if result.RowsAffected == 0 {
-		c.JSON(http.StatusForbidden, gin.H{
-			"error": "No data found",
+		c.JSON(http.StatusNotFound, gin.H{
+			"error": "No data found!",
+		})
+		c.Abort()
+		return
+	}
+
+	if result.Error != nil {
+		c.JSON(http.StatusNotFound, gin.H{
+			"error": result.Error,
 		})
 		c.Abort()
 		return
@@ -286,16 +347,16 @@ func AdminGetAllProducts(c *gin.Context) {
 
 	result := initializer.DB.Find(&products)
 
-	if result.Error != nil {
+	if result.RowsAffected == 0 {
 		c.JSON(http.StatusForbidden, gin.H{
-			"error": result.Error,
+			"error": "No data found",
 		})
 		c.Abort()
 		return
 	}
-	if result.RowsAffected == 0 {
+	if result.Error != nil {
 		c.JSON(http.StatusForbidden, gin.H{
-			"error": "No data found",
+			"error": result.Error,
 		})
 		c.Abort()
 		return
@@ -322,16 +383,16 @@ func AdminGetSingleProduct(c *gin.Context) {
 
 	result := initializer.DB.Find(&product, "id = ?", productId)
 
-	if result.Error != nil {
+	if result.RowsAffected == 0 {
 		c.JSON(http.StatusForbidden, gin.H{
-			"error": result.Error,
+			"error": "No data found",
 		})
 		c.Abort()
 		return
 	}
-	if result.RowsAffected == 0 {
+	if result.Error != nil {
 		c.JSON(http.StatusForbidden, gin.H{
-			"error": "No data found",
+			"error": result.Error,
 		})
 		c.Abort()
 		return
