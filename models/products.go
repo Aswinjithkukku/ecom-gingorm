@@ -1,7 +1,11 @@
 package models
 
 import (
+	"fmt"
 	"time"
+
+	"github.com/gosimple/slug"
+	"gorm.io/gorm"
 )
 
 const (
@@ -25,5 +29,18 @@ type Products struct {
 	DealerPlace        string    `json:"dealerPlace"`
 	ProductDestination string    `json:"productDestination"`
 	HeroImage          string    `json:"heroImage" gorm:"not null"`
+	Slug               string    `json:"slug" gorm:"unique"`
 	CreatedAt          time.Time `json:"createdAt"`
+}
+
+func (p *Products) BeforeSave(tx *gorm.DB) error {
+	p.Slug = slug.Make(p.LongName)
+
+	// Check whether the slug is unique or not.
+	var count int64
+	tx.Model(&Products{}).Where("slug=?", p.Slug).Count(&count)
+	if count > 0 {
+		return fmt.Errorf("Slug is not unique. Product with same long name exist. Provide another longName")
+	}
+	return nil
 }

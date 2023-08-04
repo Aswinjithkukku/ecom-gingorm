@@ -160,7 +160,7 @@ func AdminCreateProduct(c *gin.Context) {
 	if result.Error != nil {
 		fmt.Println(result.Error)
 		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to add product",
+			"error": result.Error.Error(),
 		})
 		c.Abort()
 		return
@@ -175,9 +175,9 @@ func AdminCreateProduct(c *gin.Context) {
 
 // Admin to update product.
 func AdminUpdateProduct(c *gin.Context) {
-	productId := c.Param("productid")
+	slug := c.Param("slug")
 
-	if productId == "" {
+	if slug == "" {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": "Invalid product!",
 		})
@@ -230,7 +230,7 @@ func AdminUpdateProduct(c *gin.Context) {
 
 	var product models.Products
 
-	result := initializer.DB.Find(&product, "id = ?", productId)
+	result := initializer.DB.Find(&product, "slug = ?", slug)
 
 	if result.RowsAffected == 0 {
 		c.JSON(http.StatusForbidden, gin.H{
@@ -291,9 +291,9 @@ func AdminUpdateProduct(c *gin.Context) {
 }
 
 func AdminDeleteProduct(c *gin.Context) {
-	productId := c.Param("productid")
+	slug := c.Param("slug")
 
-	if productId == "" {
+	if slug == "" {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": "Invalid Product",
 		})
@@ -302,7 +302,7 @@ func AdminDeleteProduct(c *gin.Context) {
 	}
 
 	var product models.Products
-	result := initializer.DB.First(&product, "id = ?", productId)
+	result := initializer.DB.First(&product, "slug = ?", slug)
 
 	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 		c.JSON(http.StatusNotFound, gin.H{
@@ -322,7 +322,7 @@ func AdminDeleteProduct(c *gin.Context) {
 
 	if result.Error != nil {
 		c.JSON(http.StatusNotFound, gin.H{
-			"error": result.Error,
+			"error": result.Error.Error(),
 		})
 		c.Abort()
 		return
@@ -356,7 +356,7 @@ func AdminGetAllProducts(c *gin.Context) {
 	}
 	if result.Error != nil {
 		c.JSON(http.StatusForbidden, gin.H{
-			"error": result.Error,
+			"error": result.Error.Error(),
 		})
 		c.Abort()
 		return
@@ -369,9 +369,9 @@ func AdminGetAllProducts(c *gin.Context) {
 }
 
 func AdminGetSingleProduct(c *gin.Context) {
-	productId := c.Param("productid")
+	slug := c.Param("slug")
 
-	if productId == "" {
+	if slug == "" {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": "Invalid product",
 		})
@@ -381,7 +381,7 @@ func AdminGetSingleProduct(c *gin.Context) {
 
 	var product models.Products
 
-	result := initializer.DB.Find(&product, "id = ?", productId)
+	result := initializer.DB.Find(&product, "slug = ?", slug)
 
 	if result.RowsAffected == 0 {
 		c.JSON(http.StatusForbidden, gin.H{
@@ -392,7 +392,7 @@ func AdminGetSingleProduct(c *gin.Context) {
 	}
 	if result.Error != nil {
 		c.JSON(http.StatusForbidden, gin.H{
-			"error": result.Error,
+			"error": result.Error.Error(),
 		})
 		c.Abort()
 		return
