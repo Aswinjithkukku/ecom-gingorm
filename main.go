@@ -20,6 +20,7 @@ func main() {
 	r.MaxMultipartMemory = 8 << 20
 
 	routes.AdminRoute(r)
+	routes.UserRouter(r)
 
 	r.Run(":" + os.Getenv("PORT"))
 }
