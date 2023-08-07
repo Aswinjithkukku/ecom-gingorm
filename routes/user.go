@@ -9,5 +9,6 @@ func UserRouter(router *gin.Engine) {
 	user := router.Group("/api/user")
 	{
 		user.POST("/signup", controllers.UserSignUp)
+		user.POST("/signin", controllers.UserSignIn)
 	}
 }

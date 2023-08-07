@@ -37,6 +37,14 @@ func (user *Users) HashPassword(password string) error {
 	return nil
 }
 
+func (user *Users) CheckPassword(password string) error {
+	err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password))
+	if err != nil {
+		return fmt.Errorf("the provided password is wrong. Try again")
+	}
+	return nil
+}
+
 type Profile struct {
 	Id          int    `json:"id" gorm:"primaryKey"`
 	PhoneNumber int    `json:"phoneNumber"`
