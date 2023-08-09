@@ -22,8 +22,6 @@ type Users struct {
 	Password    string    `json:"password" gorm:"not null" validate:"required"`
 	Role        string    `json:"role" gorm:"not null;default:CLIENT"`
 	BlockStatus bool      `json:"blockStatus" gorm:"not null;default:false"`
-	ProfileId   int       `json:"profileId"`
-	Profile     Profile   `gorm:"foreignKey:ProfileId"`
 	CreatedAt   time.Time `json:"createdAt"`
 }
 
@@ -47,6 +45,7 @@ func (user *Users) CheckPassword(password string) error {
 
 type Profile struct {
 	Id          int    `json:"id" gorm:"primaryKey"`
+	UserId      int    `json:"userId"`
 	PhoneNumber int    `json:"phoneNumber"`
 	Country     string `json:"country"`
 	City        string `json:"city"`

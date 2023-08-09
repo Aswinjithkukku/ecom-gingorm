@@ -1,12 +1,14 @@
 package controllers
 
 import (
+	"fmt"
 	"net/http"
 	"os"
 	"time"
 
 	"github.com/aswinjithkukku/ecom-gingorm/initializer"
 	"github.com/aswinjithkukku/ecom-gingorm/models"
+	"github.com/aswinjithkukku/ecom-gingorm/utils"
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
 	"github.com/golang-jwt/jwt/v5"
@@ -64,6 +66,8 @@ func UserSignUp(c *gin.Context) {
 		c.Abort()
 		return
 	}
+
+	go utils.SendEmailWithoutHTML([]string{user.Email}, "Successfull Registered!!", "Thankyou for being our partner. Let's make some collaborations")
 
 	c.JSON(http.StatusCreated, gin.H{
 		"success": true,
@@ -162,8 +166,33 @@ func UserSignIn(c *gin.Context) {
 
 }
 
+// Validatin User function.
+func ValidateUser(c *gin.Context) {
+	user, _ := c.Get("user")
+	userObj := user.(models.Users)
+
+	var userResponse = struct {
+		Id          int
+		Name        string
+		Email       string
+		BlockStatus bool
+	}{
+		Id:          userObj.Id,
+		Name:        userObj.Name,
+		Email:       userObj.Email,
+		BlockStatus: userObj.BlockStatus,
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"user":    userResponse,
+	})
+}
+
 func AddUserProfile(c *gin.Context) {
-	auth, _ := c.Get("Authorization")
+	auth, _ := c.Get("user")
+
+	fmt.Println(auth)
 	var body struct {
 		PhoneNumber int    `json:"phoneNumber"`
 		Country     string `json:"country"`
@@ -179,15 +208,16 @@ func AddUserProfile(c *gin.Context) {
 		return
 	}
 
-	var user models.Users
-	result := initializer.DB.First(&user, "id=?", auth)
+	// var user models.Users
+	// result := initializer.DB.First(&user, "id=?", auth)
 
-	if result.Error != nil || result.RowsAffected == 0 {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Cannot find user. Try again!",
-		})
-		c.Abort()
-		return
-	}
+	// if result.Error != nil || result.RowsAffected == 0 {
+	// 	c.JSON(http.StatusInternalServerError, gin.H{
+	// 		"error": "Cannot find user. Try again!",
+	// 	})
+	// 	c.Abort()
+	// 	return
+	// }
+	c.JSON(200, body)
 	// ongoing.............
 }
