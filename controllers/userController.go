@@ -1,7 +1,6 @@
 package controllers
 
 import (
-	"fmt"
 	"net/http"
 	"os"
 	"time"
@@ -189,10 +188,10 @@ func ValidateUser(c *gin.Context) {
 	})
 }
 
+// Adding User profile
 func AddUserProfile(c *gin.Context) {
 	auth, _ := c.Get("user")
 
-	fmt.Println(auth)
 	var body struct {
 		PhoneNumber int    `json:"phoneNumber"`
 		Country     string `json:"country"`
@@ -208,16 +207,34 @@ func AddUserProfile(c *gin.Context) {
 		return
 	}
 
-	// var user models.Users
-	// result := initializer.DB.First(&user, "id=?", auth)
+	validate := validator.New()
+	if err := validate.Struct(body); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": err.Error(),
+		})
+		c.Abort()
+		return
+	}
 
-	// if result.Error != nil || result.RowsAffected == 0 {
-	// 	c.JSON(http.StatusInternalServerError, gin.H{
-	// 		"error": "Cannot find user. Try again!",
-	// 	})
-	// 	c.Abort()
-	// 	return
-	// }
-	c.JSON(200, body)
-	// ongoing.............
+	profile := models.Profile{
+		PhoneNumber: body.PhoneNumber,
+		Country:     body.Country,
+		City:        body.City,
+		PinCode:     body.PinCode,
+		UserId:      auth.(models.Users).Id,
+	}
+
+	result := initializer.DB.Create(&profile)
+
+	if result.Error != nil || result.RowsAffected == 0 {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Cannot Creae Profile. Try again!",
+		})
+		c.Abort()
+		return
+	}
+	c.JSON(http.StatusCreated, gin.H{
+		"status":  true,
+		"profile": profile,
+	})
 }

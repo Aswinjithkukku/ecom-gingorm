@@ -11,6 +11,7 @@ func UserRouter(router *gin.Engine) {
 	{
 		user.POST("/signup", controllers.UserSignUp)
 		user.POST("/signin", controllers.UserSignIn)
-		user.GET("/profile", middlewares.UserAuth, controllers.AddUserProfile)
+		user.GET("/validate", middlewares.UserAuth, controllers.ValidateUser)
+		user.POST("/addprofile", middlewares.UserAuth, controllers.AddUserProfile)
 	}
 }

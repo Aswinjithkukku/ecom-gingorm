@@ -15,6 +15,7 @@ const (
 	Client     UserRole = "CLIENT"
 )
 
+// Users model.
 type Users struct {
 	Id          int       `json:"id" gorm:"primaryKey"`
 	Name        string    `json:"name" gorm:"not null" validate:"required"`
@@ -22,6 +23,7 @@ type Users struct {
 	Password    string    `json:"password" gorm:"not null" validate:"required"`
 	Role        string    `json:"role" gorm:"not null;default:CLIENT"`
 	BlockStatus bool      `json:"blockStatus" gorm:"not null;default:false"`
+	Profile     Profile   `gorm:"foreignKey:UserId"`
 	CreatedAt   time.Time `json:"createdAt"`
 }
 
@@ -43,9 +45,10 @@ func (user *Users) CheckPassword(password string) error {
 	return nil
 }
 
+// Profile Model.
 type Profile struct {
 	Id          int    `json:"id" gorm:"primaryKey"`
-	UserId      int    `json:"userId"`
+	UserId      int    `json:"userId" gorm:"foreignKey:UserId"`
 	PhoneNumber int    `json:"phoneNumber"`
 	Country     string `json:"country"`
 	City        string `json:"city"`
