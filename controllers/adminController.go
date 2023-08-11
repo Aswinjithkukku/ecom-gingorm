@@ -404,6 +404,8 @@ func AdminGetSingleProduct(c *gin.Context) {
 	})
 }
 
+// Admin User controllers -------------------------------------------------------------------------------------------------.
+
 // GetAllUsers function.
 func GetAllUsers(c *gin.Context) {
 	var users []models.Users
@@ -424,8 +426,6 @@ func GetAllUsers(c *gin.Context) {
 	})
 
 }
-
-// Admin User controllers -------------------------------------------------------------------------------------------------.
 
 // Get One User function.
 func GetOneUser(c *gin.Context) {
