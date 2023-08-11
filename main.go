@@ -18,6 +18,7 @@ func main() {
 
 	r := gin.Default()
 	r.MaxMultipartMemory = 8 << 20
+	r.Static("/public", "./public")
 
 	routes.AdminRoute(r)
 	routes.UserRouter(r)

@@ -188,7 +188,7 @@ func ValidateUser(c *gin.Context) {
 	})
 }
 
-// Adding User profile
+// Adding User profile.
 func AddUserProfile(c *gin.Context) {
 	auth, _ := c.Get("user")
 

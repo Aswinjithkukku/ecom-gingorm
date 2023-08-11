@@ -403,3 +403,48 @@ func AdminGetSingleProduct(c *gin.Context) {
 		"product": product,
 	})
 }
+
+// GetAllUsers function.
+func GetAllUsers(c *gin.Context) {
+	var users []models.Users
+
+	result := initializer.DB.Preload("Profile").Find(&users)
+
+	if result.Error != nil || result.RowsAffected == 0 {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Cannot find the users",
+		})
+		c.Abort()
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"users":   users,
+	})
+
+}
+
+// Admin User controllers -------------------------------------------------------------------------------------------------.
+
+// Get One User function.
+func GetOneUser(c *gin.Context) {
+	userId := c.Param("userid")
+
+	var user models.Users
+
+	result := initializer.DB.Preload("Profile").First(&user, "id=?", userId)
+
+	if result.Error != nil || result.RowsAffected == 0 {
+		c.JSON(http.StatusNotFound, gin.H{
+			"error": "Cannot find the provided user",
+		})
+		c.Abort()
+		return
+	}
+
+	c.JSON(http.StatusAccepted, gin.H{
+		"success": true,
+		"user":    user,
+	})
+}

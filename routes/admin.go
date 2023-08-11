@@ -13,5 +13,7 @@ func AdminRoute(router *gin.Engine) {
 		admin.DELETE("/deleteproduct/:slug", controllers.AdminDeleteProduct)
 		admin.GET("/products", controllers.AdminGetAllProducts)
 		admin.GET("/product/:slug", controllers.AdminGetSingleProduct)
+		admin.GET("/alluser", controllers.GetAllUsers)
+		admin.GET("/user/:userid", controllers.GetOneUser)
 	}
 }
